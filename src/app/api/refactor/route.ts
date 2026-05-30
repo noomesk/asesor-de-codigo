@@ -43,6 +43,7 @@ Ahora, responde únicamente con el objeto JSON solicitado.`;
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.1,
+        max_tokens: 4096,
       }),
     });
 
@@ -68,11 +69,11 @@ Ahora, responde únicamente con el objeto JSON solicitado.`;
     try {
       parsedResponse = JSON.parse(cleanResponse);
     } catch (directParseError) {
-      // Si falla por saltos de línea dentro de las propiedades del string JSON, saneamos
-      const sanitizedResponse = cleanResponse.replace(/\n/g, '\\n');
+      // Si falla, escapamos los saltos de línea reales que estén dentro de las cadenas de texto JSON
+      const escapedResponse = escapeNewlinesInJSONStrings(cleanResponse);
       try {
-        parsedResponse = JSON.parse(sanitizedResponse);
-      } catch (sanitizedParseError) {
+        parsedResponse = JSON.parse(escapedResponse);
+      } catch (escapedParseError) {
         console.error("Error al parsear el JSON de Groq:", rawResponse);
         return NextResponse.json({ error: 'La IA devolvió una respuesta que no es un JSON válido.' }, { status: 500 });
       }
@@ -84,4 +85,34 @@ Ahora, responde únicamente con el objeto JSON solicitado.`;
     console.error(error);
     return NextResponse.json({ error: error.message || 'Error del servidor al refactorizar.' }, { status: 500 });
   }
+}
+
+function escapeNewlinesInJSONStrings(jsonStr: string): string {
+  let result = '';
+  let inString = false;
+  let isEscaped = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i];
+
+    if (char === '"' && !isEscaped) {
+      inString = !inString;
+    }
+
+    if (char === '\n' && inString) {
+      result += '\\n';
+    } else if (char === '\r' && inString) {
+      result += '\\r';
+    } else {
+      result += char;
+    }
+
+    if (char === '\\' && !isEscaped) {
+      isEscaped = true;
+    } else {
+      isEscaped = false;
+    }
+  }
+
+  return result;
 }
