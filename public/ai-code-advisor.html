@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Code Style Advisor</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #06060f;
+      --bg2: #0c0c1a;
+      --bg3: #0f0f20;
+      --surface: #111128;
+      --border: #1a1a35;
+      --border-hover: #2a2a55;
+      --cyan: #00f5ff;
+      --cyan-dim: rgba(0,245,255,0.08);
+      --cyan-glow: rgba(0,245,255,0.2);
+      --violet: #7c3aed;
+      --violet-dim: rgba(124,58,237,0.08);
+      --violet-glow: rgba(124,58,237,0.25);
+      --amber: #f59e0b;
+      --text: #e2e8f0;
+      --text-muted: #4a5568;
+      --text-dim: #2d3748;
+      --code: #a5f3fc;
+      --error: #f87171;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── HERO ─────────────────────────────────────── */
+    .hero {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      min-height: 600px;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 60px;
+      overflow: hidden;
+    }
+
+    .mantis-wrap {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mantis-wrap iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 60%, rgba(0,245,255,0.04) 0%, transparent 70%),
+        linear-gradient(180deg,
+          rgba(6,6,15,0.05) 0%,
+          rgba(6,6,15,0.0) 30%,
+          rgba(124,58,237,0.06) 60%,
+          rgba(6,6,15,0.97) 100%
+        );
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,245,255,0.012) 3px,
+        rgba(0,245,255,0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .corner { position: absolute; width: 28px; height: 28px; z-index: 5; }
+    .corner::before, .corner::after { content: ''; position: absolute; background: var(--cyan); opacity: 0.5; }
+    .c-tl { top: 20px; left: 20px; }
+    .c-tl::before { width: 1px; height: 100%; top: 0; left: 0; }
+    .c-tl::after  { height: 1px; width: 100%; top: 0; left: 0; }
+    .c-tr { top: 20px; right: 20px; }
+    .c-tr::before { width: 1px; height: 100%; top: 0; right: 0; left: auto; }
+    .c-tr::after  { height: 1px; width: 100%; top: 0; right: 0; }
+    .c-bl { bottom: 20px; left: 20px; }
+    .c-bl::before { width: 1px; height: 100%; bottom: 0; left: 0; top: auto; background: var(--violet); opacity: 0.5; }
+    .c-bl::after  { height: 1px; width: 100%; bottom: 0; left: 0; top: auto; background: var(--violet); opacity: 0.5; }
+    .c-br { bottom: 20px; right: 20px; }
+    .c-br::before { width: 1px; height: 100%; bottom: 0; right: 0; left: auto; top: auto; background: var(--violet); opacity: 0.5; }
+    .c-br::after  { height: 1px; width: 100%; bottom: 0; right: 0; top: auto; background: var(--violet); opacity: 0.5; }
+
+    .hero-content {
+      position: relative;
+      z-index: 4;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--violet);
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+
+    .hero-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(24px, 4vw, 42px);
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -1px;
+      line-height: 1.15;
+    }
+
+    .hero-title .accent { color: var(--violet); }
+
+    .hero-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 380px;
+      line-height: 1.7;
+    }
+
+    .scroll-hint {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .scroll-hint span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .scroll-arrow {
+      width: 1px;
+      height: 28px;
+      background: linear-gradient(180deg, var(--cyan), transparent);
+      animation: pulse-down 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-down {
+      0%, 100% { opacity: 0.3; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(4px); }
+    }
+
+    /* ─── DIVIDER ───────────────────────────────────── */
+    .signal-line {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--violet) 20%,
+        var(--cyan) 50%,
+        var(--violet) 80%,
+        transparent 100%
+      );
+      opacity: 0.35;
+    }
+
+    /* ─── MAIN SECTION ──────────────────────────────── */
+    .main {
+      position: relative;
+      padding: 48px 32px 60px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .geo-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.07;
+      z-index: 0;
+    }
+
+    .section-head {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .section-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--violet);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0.6;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* ─── GRID ──────────────────────────────────────── */
+    .advisor-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 720px) {
+      .advisor-grid { grid-template-columns: 1fr; }
+      .main { padding: 32px 16px 40px; }
+    }
+
+    /* ─── PANELS ────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .panel:hover {
+      transform: translateY(-2px) scale(1.015);
+      border-color: var(--violet);
+      box-shadow: 0 12px 30px var(--violet-glow);
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--violet), transparent);
+      opacity: 0.3;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    .dot.violet { background: var(--violet); }
+
+    .panel-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* ─── TEXTAREA ──────────────────────────────────── */
+    .code-input {
+      width: 100%;
+      height: 160px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--code);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      padding: 12px 14px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .code-input:focus {
+      border-color: var(--violet);
+      box-shadow: 0 0 0 1px var(--violet-glow), inset 0 0 20px rgba(124,58,237,0.03);
+    }
+
+    .code-input::-webkit-scrollbar { width: 4px; }
+    .code-input::-webkit-scrollbar-track { background: transparent; }
+    .code-input::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+    .code-input::-webkit-scrollbar-thumb:hover { background: var(--violet); }
+
+    .code-input::placeholder { color: var(--text-dim); }
+
+    /* ─── SELECTOR ──────────────────────────────────── */
+    .selector-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin: 16px 0 8px;
+    }
+
+    .selector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .sel-btn {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+    }
+
+    .sel-indicator {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--border-hover);
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .sel-btn.active {
+      border-color: var(--violet);
+      color: #c084fc;
+      background: var(--violet-dim);
+    }
+
+    .sel-btn.active .sel-indicator {
+      background: var(--violet);
+      box-shadow: 0 0 6px var(--violet-glow);
+    }
+
+    .sel-btn:hover:not(.active) {
+      border-color: var(--violet);
+      color: #a78bfa;
+      background: var(--violet-dim);
+    }
+
+    .sel-btn:hover:not(.active) .sel-indicator {
+      background: var(--violet);
+    }
+
+    /* ─── ANALYZE BUTTON ────────────────────────────── */
+    .analyze-btn {
+      width: 100%;
+      margin-top: 14px;
+      background: transparent;
+      border: 1px solid var(--violet);
+      border-radius: 3px;
+      color: #c084fc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 12px;
+      cursor: pointer;
+      letter-spacing: 1.5px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .analyze-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--violet-dim);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .analyze-btn:hover::before { opacity: 1; }
+
+    .analyze-btn:hover {
+      box-shadow: 0 0 20px var(--violet-glow), inset 0 0 20px rgba(124,58,237,0.05);
+    }
+
+    .analyze-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ─── WAVEFORM ──────────────────────────────────── */
+    .waveform {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 28px;
+      margin-top: 10px;
+    }
+
+    .waveform.active { display: flex; }
+
+    .wave-bar {
+      width: 3px;
+      border-radius: 2px;
+      background: var(--cyan);
+      opacity: 0.7;
+      animation: wave-anim 1.4s ease-in-out infinite;
+    }
+
+    @keyframes wave-anim {
+      0%, 100% { transform: scaleY(0.3); opacity: 0.3; }
+      50%       { transform: scaleY(1);   opacity: 1;   }
+    }
+
+    .wave-bar:nth-child(1)  { height: 8px;  animation-delay: 0s;    }
+    .wave-bar:nth-child(2)  { height: 16px; animation-delay: 0.1s;  }
+    .wave-bar:nth-child(3)  { height: 22px; animation-delay: 0.2s;  }
+    .wave-bar:nth-child(4)  { height: 12px; animation-delay: 0.3s;  }
+    .wave-bar:nth-child(5)  { height: 20px; animation-delay: 0.4s;  }
+    .wave-bar:nth-child(6)  { height: 10px; animation-delay: 0.5s;  }
+    .wave-bar:nth-child(7)  { height: 18px; animation-delay: 0.6s;  }
+    .wave-bar:nth-child(8)  { height: 8px;  animation-delay: 0.7s;  }
+    .wave-bar:nth-child(9)  { height: 14px; animation-delay: 0.8s;  }
+    .wave-bar:nth-child(10) { height: 6px;  animation-delay: 0.9s;  }
+
+    .loading-label {
+      display: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .loading-label.active { display: block; }
+
+    /* ─── OUTPUT PANEL ──────────────────────────────── */
+    .output-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .output-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 14px;
+      flex: 1;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .output-card:hover {
+      transform: translateY(-2px) scale(1.015);
+      border-color: var(--violet);
+      box-shadow: 0 10px 25px var(--violet-glow);
+    }
+
+    .output-card.code-result { border-left: 2px solid var(--violet); }
+    .output-card.explain-result { border-left: 2px solid var(--violet); }
+
+    .output-card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .code-result .output-card-label { color: #c084fc; opacity: 0.7; }
+    .explain-result .output-card-label { color: #a78bfa; opacity: 0.7; }
+
+    .code-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--code);
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .code-block::-webkit-scrollbar { width: 4px; }
+    .code-block::-webkit-scrollbar-track { background: transparent; }
+    .code-block::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+
+    .explain-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .explain-list li {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.6;
+      padding-left: 14px;
+      position: relative;
+    }
+
+    .explain-list li::before {
+      content: '›';
+      position: absolute;
+      left: 0;
+      color: var(--violet);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .error-msg {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--error);
+      padding: 8px 0;
+    }
+
+    /* ─── FOOTER ────────────────────────────────────── */
+    footer {
+      width: 100%;
+      padding: 32px 32px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+
+    footer::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--violet), transparent);
+    }
+
+    .footer-nodes {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-node {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+    }
+
+    .footer-node.cyan { background: var(--violet); opacity: 0.6; }
+    .footer-node.violet { background: var(--violet); opacity: 0.6; }
+
+    .footer-line {
+      width: 40px; height: 1px;
+      background: var(--border-hover);
+    }
+
+    .footer-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 2.5px;
+      text-align: center;
+      opacity: 0.5;
+    }
+
+    .footer-text span { color: var(--violet); opacity: 0.9; }
+
+    .footer-stack {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 1.5px;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── HERO ─────────────────────────────────────── -->
+  <section class="hero">
+    <div class="mantis-wrap">
+      <iframe
+        title="Mantis religiosa - CT Scan - Point cloud"
+        allowfullscreen
+        mozallowfullscreen="true"
+        webkitallowfullscreen="true"
+        allow="autoplay; fullscreen; xr-spatial-tracking"
+        src="https://sketchfab.com/models/21d10f501fa14e49856e77fa2f967f6d/embed?autostart=1&ui_controls=0&ui_infos=0&ui_watermark=0&ui_stop=0&ui_inspector=0&ui_ar=0&ui_help=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&transparent=1&autospin=0.25">
+      </iframe>
+    </div>
+    <div class="hero-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+
+    <div class="hero-content">
+      <div class="hero-eyebrow">// ai_code_advisor &nbsp;·&nbsp; v1.0</div>
+      <h1 class="hero-title">Code Style <span class="accent">Advisor</span></h1>
+      <p class="hero-sub">Pega tu componente React y obtén sugerencias impulsadas por IA para alinearlo con los sistemas de diseño más populares.</p>
+      <div class="scroll-hint" onclick="document.getElementById('advisor').scrollIntoView({behavior:'smooth'})">
+        <span>scroll</span>
+        <div class="scroll-arrow"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="signal-line"></div>
+
+  <!-- ─── ADVISOR ───────────────────────────────────── -->
+  <main class="main" id="advisor">
+
+    <svg class="geo-canvas" viewBox="0 0 1100 600" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+          <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#00f5ff" stroke-width="0.6"/>
+        </pattern>
+      </defs>
+      <rect width="1100" height="600" fill="url(#grid)"/>
+      <circle cx="550" cy="300" r="260" fill="none" stroke="#7c3aed" stroke-width="0.8"/>
+      <circle cx="550" cy="300" r="160" fill="none" stroke="#00f5ff" stroke-width="0.5"/>
+      <circle cx="550" cy="300" r="80"  fill="none" stroke="#7c3aed" stroke-width="0.4"/>
+      <line x1="0"   y1="300" x2="1100" y2="300" stroke="#00f5ff" stroke-width="0.4"/>
+      <line x1="550" y1="0"   x2="550"  y2="600" stroke="#7c3aed" stroke-width="0.4"/>
+      <line x1="0"   y1="0"   x2="1100" y2="600" stroke="#00f5ff" stroke-width="0.25" opacity="0.5"/>
+      <line x1="1100" y1="0"  x2="0"    y2="600" stroke="#7c3aed" stroke-width="0.25" opacity="0.5"/>
+    </svg>
+
+    <div class="section-head">
+      <span class="section-tag">// analyze_component()</span>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="advisor-grid">
+
+      <!-- INPUT PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="dot"></div>
+          <span class="panel-label">code_input</span>
+        </div>
+        <textarea
+          class="code-input"
+          id="codeInput"
+          placeholder="// paste your React component here&#10;&#10;export default function Button() {&#10;  return (&#10;    &lt;button style={{padding: '8px 16px'}}&gt;&#10;      Click me&#10;    &lt;/button&gt;&#10;  )&#10;}"></textarea>
+
+        <div class="selector-label">// target_design_system</div>
+        <div class="selector-grid" id="selectorGroup">
+          <button class="sel-btn active" data-val="Tailwind CSS">
+            <span class="sel-indicator"></span>Tailwind CSS
+          </button>
+          <button class="sel-btn" data-val="Material UI">
+            <span class="sel-indicator"></span>Material UI
+          </button>
+          <button class="sel-btn" data-val="Bootstrap">
+            <span class="sel-indicator"></span>Bootstrap
+          </button>
+          <button class="sel-btn" data-val="Shadcn/UI">
+            <span class="sel-indicator"></span>Shadcn/UI
+          </button>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn">&gt; analyze_code()</button>
+        <div class="waveform" id="waveform">
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+        </div>
+        <div class="loading-label" id="loadingLabel">// AI ESTÁ PENSANDO...</div>
+      </div>
+
+      <!-- OUTPUT PANEL -->
+      <div class="panel output-panel" id="outputPanel">
+        <div class="output-card code-result">
+          <div class="output-card-label">// refactored_component</div>
+          <div class="code-block" id="codeOutput">// El resultado aparecerá aquí...</div>
+        </div>
+        <div class="output-card explain-result">
+          <div class="output-card-label">// changes_applied</div>
+          <ul class="explain-list" id="explainOutput">
+            <li>La IA analizará tu componente React</li>
+            <li>y retornará el código refactorizado</li>
+            <li>junto con una explicación detallada de cada cambio</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="signal-line"></div>
+
+  <!-- ─── FOOTER ────────────────────────────────────── -->
+  <footer>
+    <div class="footer-nodes">
+      <div class="footer-node cyan"></div>
+      <div class="footer-line"></div>
+      <div class="footer-node"></div>
+      <div class="footer-line"></div>
+      <div class="footer-node violet"></div>
+      <div class="footer-line"></div>
+      <div class="footer-node"></div>
+      <div class="footer-line"></div>
+      <div class="footer-node cyan"></div>
+    </div>
+    <p class="footer-text">developed by &nbsp;<span>noomesk</span>&nbsp; · 2025</p>
+    <p class="footer-stack">built with groq · next.js · llama-3.1</p>
+  </footer>
+
+  <script>
+    const btns = document.querySelectorAll('.sel-btn');
+    let selected = 'Tailwind CSS';
+
+    btns.forEach(b => {
+      b.addEventListener('click', () => {
+        btns.forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        selected = b.dataset.val;
+      });
+    });
+
+    document.getElementById('analyzeBtn').addEventListener('click', async () => {
+      const code = document.getElementById('codeInput').value.trim();
+      if (!code) {
+        document.getElementById('codeOutput').textContent = '// error: no code provided';
+        return;
+      }
+
+      const btn      = document.getElementById('analyzeBtn');
+      const waveform = document.getElementById('waveform');
+      const loading  = document.getElementById('loadingLabel');
+
+      btn.textContent = '// processing...';
+      btn.disabled = true;
+      waveform.classList.add('active');
+      loading.classList.add('active');
+
+      document.getElementById('codeOutput').textContent = '// analizando...';
+      document.getElementById('explainOutput').innerHTML = '<li>La IA está procesando tu código...</li>';
+
+      try {
+        const res = await fetch('/api/refactor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: code,
+            style: selected
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Error al conectar con la API de refactorización');
+        }
+
+        const parsed = await res.json();
+
+        document.getElementById('codeOutput').textContent = parsed.styledCodeSnippet || '// sin resultado';
+
+        const points = parsed.explanation
+          .split(/[.\n•]/)
+          .map(s => s.trim())
+          .filter(s => s.length > 6);
+
+        document.getElementById('explainOutput').innerHTML =
+          points.map(p => `<li>${p}</li>`).join('');
+
+      } catch (e) {
+        document.getElementById('codeOutput').innerHTML =
+          `<span style="color:var(--error)">// error: ${e.message}</span>`;
+        document.getElementById('explainOutput').innerHTML =
+          '<li style="color:var(--error)">Error al conectar con la IA. Revisa tu conexión e intenta de nuevo.</li>';
+      } finally {
+        btn.textContent = '> analyze_code()';
+        btn.disabled = false;
+        waveform.classList.remove('active');
+        loading.classList.remove('active');
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(req: NextRequest) {
+  try {
+    const { code, style } = await req.json();
+
+    if (!code || !style) {
+      return NextResponse.json({ error: 'Faltan el código o el estilo.' }, { status: 400 });
+    }
+
+    const systemPrompt = `Actúa como un experto en React y el sistema de diseño "${style}".
+Tu única tarea es analizar el código de usuario que te proporcionarán y devolver un objeto JSON con dos claves: "styledCodeSnippet" y "explanation".
+- "styledCodeSnippet": El código original, pero refactorizado para seguir las mejores prácticas de ${style}.
+- "explanation": Una explicación en español de los cambios realizados.
+
+Ejemplo de la respuesta exacta que debes dar:
+{
+  "styledCodeSnippet": "function MiComponente() { return <div className='p-4'>Hola</div>; }",
+  "explanation": "Se usó la clase 'p-4' de Tailwind para añadir padding."
+}
+
+No escribas nada más que el objeto JSON. Sin saludos, sin explicaciones, sin bloques de código markdown.`;
+
+    const userPrompt = `Analiza y mejora este código usando ${style}:
+\`\`\`tsx
+${code}
+\`\`\`
+
+Ahora, responde únicamente con el objeto JSON solicitado.`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al contactar la API de Groq');
+    }
+
+    const data = await response.json();
+    const rawResponse = data.choices[0].message.content;
+
+    // Intentamos parsear para validar que sea JSON válido
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(rawResponse);
+    } catch (directParseError) {
+      const sanitizedResponse = rawResponse.replace(/\n/g, '\\n');
+      try {
+        parsedResponse = JSON.parse(sanitizedResponse);
+      } catch (sanitizedParseError) {
+        console.error("Error al parsear el JSON de Groq:", rawResponse);
+        return NextResponse.json({ error: 'La IA devolvió una respuesta que no es un JSON válido.' }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json(parsedResponse);
+
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ error: error.message || 'Error del servidor al refactorizar.' }, { status: 500 });
+  }
+}
