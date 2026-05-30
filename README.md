@@ -67,3 +67,9 @@ La interfaz ha sido diseñada meticulosamente para ofrecer una experiencia visua
 *   `public/`: Carpeta que contiene la copia estática servida por Next.js (`ai-code-advisor.html`).
 *   `src/app/api/refactor/route.ts`: API endpoint del backend que procesa la solicitud de IA mediante Groq.
 *   `src/app/`: Estructura del layout y páginas generales de Next.js.
+
+---
+
+## Créditos
+
+Desarrollado por [noomesk](https://github.com/noomesk). Si deseas explorar más proyectos enfocados en desarrollo creativo y arte generativo, te invito a visitar mi [portafolio de arte generativo](https://generative-art-port.vercel.app/).
