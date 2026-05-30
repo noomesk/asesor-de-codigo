@@ -47,7 +47,7 @@
     "genkit": "^1.20.0",
     "groq-sdk": "^0.34.0",
     "lucide-react": "^0.475.0",
-    "next": "15.3.3",
+    "next": "15.3.8",
     "nextn": "file:C:/Users/bblin/Desktop/PORTAFOLIO_BACKUP_20251109_141244",
     "nodemailer": "^7.0.10",
     "patch-package": "^8.0.0",
