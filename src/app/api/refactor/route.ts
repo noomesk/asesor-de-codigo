@@ -53,12 +53,23 @@ Ahora, responde únicamente con el objeto JSON solicitado.`;
     const data = await response.json();
     const rawResponse = data.choices[0].message.content;
 
+    // Limpieza de formato markdown de bloques de código json
+    let cleanResponse = rawResponse.replace(/```json|```/g, '').trim();
+
+    // Buscamos el primer '{' y el último '}' en caso de que la IA haya agregado texto de relleno
+    const firstBrace = cleanResponse.indexOf('{');
+    const lastBrace = cleanResponse.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanResponse = cleanResponse.substring(firstBrace, lastBrace + 1);
+    }
+
     // Intentamos parsear para validar que sea JSON válido
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(rawResponse);
+      parsedResponse = JSON.parse(cleanResponse);
     } catch (directParseError) {
-      const sanitizedResponse = rawResponse.replace(/\n/g, '\\n');
+      // Si falla por saltos de línea dentro de las propiedades del string JSON, saneamos
+      const sanitizedResponse = cleanResponse.replace(/\n/g, '\\n');
       try {
         parsedResponse = JSON.parse(sanitizedResponse);
       } catch (sanitizedParseError) {
