@@ -1,6 +1,6 @@
-# AI Code Style Advisor
+# AI Code Style Advisor 
 
-El AI Code Style Advisor es una aplicación web independiente de última generación que actúa como un consultor experto para desarrolladores frontend. Permite analizar, optimizar y refactorizar componentes de React para alinearlos con los estándares y mejores prácticas de los sistemas de diseño más populares del mercado.
+El AI Code Style Advisor es una aplicación web independiente de última generación que actúa como un consultor experto para desarrolladores frontend. Permite analizar, optimizar y refactorizar componentes de React para alinearlos con los estándares y mejores prácticas de los sistemas de diseño populares del mercado.
 
 El proyecto cuenta con una interfaz inmersiva inspirada en consolas de control militar e interfaces tácticas Cyberpunk Sci-Fi (HUD), fusionando el arte generativo técnico con modelos tridimensionales interactivos.
 
